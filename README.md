@@ -25,7 +25,7 @@
 ## 安装
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/ClashShow.git
+git clone https://github.com/fox2049/ClashShow.git
 cd ClashShow
 bash install.sh
 ```
