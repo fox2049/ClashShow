@@ -9,9 +9,31 @@ import socket
 import json
 import sys
 import time
+import locale
+import os
 
 SOCKET_PATH = "/tmp/verge/verge-mihomo.sock"
 STATE_FILE = "/tmp/clashshow_speed.json"
+
+# 根据系统语言自动切换显示语言
+def _is_chinese():
+    lang = os.environ.get("LANG", "") or locale.getdefaultlocale()[0] or ""
+    return lang.startswith("zh")
+
+if _is_chinese():
+    _T = {
+        "no_conn": "无活动连接",
+        "not_running": "Clash 未运行",
+        "conn_failed": "Clash 连接失败",
+        "error": "错误",
+    }
+else:
+    _T = {
+        "no_conn": "No active connections",
+        "not_running": "Clash not running",
+        "conn_failed": "Clash connection failed",
+        "error": "Error",
+    }
 
 # 常见的二级顶级域名后缀（取 3 段）
 _TWO_PART_TLDS = {
@@ -137,7 +159,7 @@ def main():
         ul_hot = ul_speed >= 1024 * 1024
         connections = data.get("connections") or []
         if not connections:
-            print(json.dumps({"dl": dl_str, "ul": ul_str, "dl_hot": dl_hot, "ul_hot": ul_hot, "host": "无活动连接", "direct": True}))
+            print(json.dumps({"dl": dl_str, "ul": ul_str, "dl_hot": dl_hot, "ul_hot": ul_hot, "host": _T["no_conn"], "direct": True}))
             return
         latest = max(connections, key=lambda c: c.get("start", ""))
         meta = latest.get("metadata", {})
@@ -147,11 +169,11 @@ def main():
         is_direct = (chain == "DIRECT")
         print(json.dumps({"dl": dl_str, "ul": ul_str, "dl_hot": dl_hot, "ul_hot": ul_hot, "host": host, "direct": is_direct}))
     except FileNotFoundError:
-        print(json.dumps({"dl": "↓   0KB", "ul": "↑   0KB", "dl_hot": False, "ul_hot": False, "host": "Clash 未运行", "direct": True}))
+        print(json.dumps({"dl": "↓   0KB", "ul": "↑   0KB", "dl_hot": False, "ul_hot": False, "host": _T["not_running"], "direct": True}))
     except ConnectionRefusedError:
-        print(json.dumps({"dl": "↓   0KB", "ul": "↑   0KB", "dl_hot": False, "ul_hot": False, "host": "Clash 连接失败", "direct": True}))
+        print(json.dumps({"dl": "↓   0KB", "ul": "↑   0KB", "dl_hot": False, "ul_hot": False, "host": _T["conn_failed"], "direct": True}))
     except Exception as e:
-        print(f"错误: {e}", file=sys.stderr)
+        print(f"{_T['error']}: {e}", file=sys.stderr)
         sys.exit(1)
 
 
