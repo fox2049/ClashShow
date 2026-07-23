@@ -57,7 +57,7 @@ export default class ClashShowExtension extends Extension {
         this._hostLabel = new St.Label({
             text: 'Clash…',
             y_align: Clutter.ActorAlign.CENTER,
-            style: 'font-size: 11px; margin-left: 5px;',
+            style: 'font-size: 11px; margin-left: 8px;',
         });
 
         box.add_child(this._dlLabel);
