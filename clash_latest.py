@@ -131,10 +131,13 @@ def main():
         dl_total = data.get("downloadTotal", 0)
         ul_total = data.get("uploadTotal", 0)
         dl_speed, ul_speed = calc_speed(dl_total, ul_total)
-        speed_str = f"↓{format_speed_fixed(dl_speed)}  ↑{format_speed_fixed(ul_speed)}"
+        dl_str = f"↓{format_speed_fixed(dl_speed)}"
+        ul_str = f"↑{format_speed_fixed(ul_speed)}"
+        dl_hot = dl_speed >= 1024 * 1024
+        ul_hot = ul_speed >= 1024 * 1024
         connections = data.get("connections") or []
         if not connections:
-            print(json.dumps({"speed": speed_str, "chain": "", "host": "无活动连接", "direct": True}))
+            print(json.dumps({"dl": dl_str, "ul": ul_str, "dl_hot": dl_hot, "ul_hot": ul_hot, "host": "无活动连接", "direct": True}))
             return
         latest = max(connections, key=lambda c: c.get("start", ""))
         meta = latest.get("metadata", {})
@@ -142,11 +145,11 @@ def main():
         chains = latest.get("chains", [])
         chain = chains[-1] if chains else "?"
         is_direct = (chain == "DIRECT")
-        print(json.dumps({"speed": speed_str, "chain": chain, "host": host, "direct": is_direct}))
+        print(json.dumps({"dl": dl_str, "ul": ul_str, "dl_hot": dl_hot, "ul_hot": ul_hot, "host": host, "direct": is_direct}))
     except FileNotFoundError:
-        print(json.dumps({"speed": "↓   0KB  ↑   0KB", "chain": "", "host": "Clash 未运行", "direct": True}))
+        print(json.dumps({"dl": "↓   0KB", "ul": "↑   0KB", "dl_hot": False, "ul_hot": False, "host": "Clash 未运行", "direct": True}))
     except ConnectionRefusedError:
-        print(json.dumps({"speed": "↓   0KB  ↑   0KB", "chain": "", "host": "Clash 连接失败", "direct": True}))
+        print(json.dumps({"dl": "↓   0KB", "ul": "↑   0KB", "dl_hot": False, "ul_hot": False, "host": "Clash 连接失败", "direct": True}))
     except Exception as e:
         print(f"错误: {e}", file=sys.stderr)
         sys.exit(1)

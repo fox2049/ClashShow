@@ -7,7 +7,10 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
 const REFRESH_INTERVAL = 3;
-const PROXY_COLOR = '#77216F';
+const DIRECT_COLOR = '#77216F';
+const PROXY_COLOR = '#E95420';
+const HOT_COLOR = '#E95420';
+const BASE_STYLE = 'font-size: 11px;';
 
 export default class ClashShowExtension extends Extension {
     enable() {
@@ -22,39 +25,45 @@ export default class ClashShowExtension extends Extension {
             style_class: 'panel-status-menu-box',
         });
 
-        this._icon = new St.Icon({
-            icon_name: 'network-transmit-receive-symbolic',
-            style_class: 'system-status-icon',
-        });
-
-        this._speedLabel = new St.Label({
+        // 下载速度
+        this._dlLabel = new St.Label({
             text: '⏳',
             y_align: Clutter.ActorAlign.CENTER,
-            style: 'font-size: 11px;',
+            style: BASE_STYLE,
         });
 
-        this._sepLabel = new St.Label({
-            text: ' │ ',
-            y_align: Clutter.ActorAlign.CENTER,
-            style: 'font-size: 11px;',
-        });
-
-        this._chainLabel = new St.Label({
+        // 上传速度
+        this._ulLabel = new St.Label({
             text: '',
             y_align: Clutter.ActorAlign.CENTER,
-            style: 'font-size: 11px;',
+            style: 'font-size: 11px; margin-left: 6px;',
         });
 
+        // 分隔符
+        this._sepLabel = new St.Label({
+            text: '│',
+            y_align: Clutter.ActorAlign.CENTER,
+            style: 'font-size: 11px; margin-left: 6px; margin-right: 6px;',
+        });
+
+        // 分流状态圆点
+        this._dotLabel = new St.Label({
+            text: '●',
+            y_align: Clutter.ActorAlign.CENTER,
+            style: 'font-size: 9px;',
+        });
+
+        // 域名
         this._hostLabel = new St.Label({
             text: 'Clash…',
             y_align: Clutter.ActorAlign.CENTER,
-            style: 'font-size: 11px;',
+            style: 'font-size: 11px; margin-left: 5px;',
         });
 
-        box.add_child(this._icon);
-        box.add_child(this._speedLabel);
+        box.add_child(this._dlLabel);
+        box.add_child(this._ulLabel);
         box.add_child(this._sepLabel);
-        box.add_child(this._chainLabel);
+        box.add_child(this._dotLabel);
         box.add_child(this._hostLabel);
         this._indicator.add_child(box);
 
@@ -90,17 +99,28 @@ export default class ClashShowExtension extends Extension {
             const [ok, stdout] = proc.communicate_utf8(null, null);
             if (ok && stdout) {
                 const info = JSON.parse(stdout.trim());
-                this._speedLabel.text = info.speed || '';
-                this._chainLabel.text = info.chain ? `[${info.chain}] ` : '';
+
+                // 下载速度（超1MB变色）
+                this._dlLabel.text = info.dl || '';
+                this._dlLabel.style = info.dl_hot
+                    ? `font-size: 11px; color: ${HOT_COLOR};`
+                    : BASE_STYLE;
+
+                // 上传速度（超1MB变色）
+                this._ulLabel.text = info.ul || '';
+                this._ulLabel.style = info.ul_hot
+                    ? 'font-size: 11px; margin-left: 6px; color: ' + HOT_COLOR + ';'
+                    : 'font-size: 11px; margin-left: 6px;';
+
+                // 域名
                 this._hostLabel.text = info.host || '';
-                if (info.direct) {
-                    this._hostLabel.style = 'font-size: 11px;';
-                } else {
-                    this._hostLabel.style = `font-size: 11px; color: ${PROXY_COLOR};`;
-                }
+
+                // 圆点颜色：直连紫色，代理橙色
+                const color = info.direct ? DIRECT_COLOR : PROXY_COLOR;
+                this._dotLabel.style = `font-size: 9px; color: ${color};`;
             } else {
-                this._speedLabel.text = '';
-                this._chainLabel.text = '';
+                this._dlLabel.text = '';
+                this._ulLabel.text = '';
                 this._hostLabel.text = 'Clash?';
             }
         } catch (e) {
@@ -117,11 +137,11 @@ export default class ClashShowExtension extends Extension {
         if (this._indicator) {
             this._indicator.destroy();
             this._indicator = null;
-            this._speedLabel = null;
+            this._dlLabel = null;
+            this._ulLabel = null;
             this._sepLabel = null;
-            this._chainLabel = null;
+            this._dotLabel = null;
             this._hostLabel = null;
-            this._icon = null;
         }
     }
 }
