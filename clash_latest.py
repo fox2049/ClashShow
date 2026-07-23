@@ -122,6 +122,23 @@ def fetch_connections():
     return json.loads(parts[1])
 
 
+def read_net_dev():
+    """读取 /proc/net/dev 获取系统全部网卡累计收发字节数（排除 lo）"""
+    rx_total = 0
+    tx_total = 0
+    with open("/proc/net/dev", "r") as f:
+        for line in f.readlines()[2:]:  # 跳过表头两行
+            parts = line.split()
+            if not parts:
+                continue
+            iface = parts[0].rstrip(":")
+            if iface == "lo":
+                continue
+            rx_total += int(parts[1])
+            tx_total += int(parts[9])
+    return rx_total, tx_total
+
+
 def calc_speed(dl_total, ul_total):
     """根据两次累计值之差计算速度 (B/s)，状态持久化到临时文件"""
     now = time.time()
@@ -146,17 +163,20 @@ def calc_speed(dl_total, ul_total):
 
 
 def main():
+    # 系统全网速（/proc/net/dev）
+    dl_total, ul_total = read_net_dev()
+    dl_speed, ul_speed = calc_speed(dl_total, ul_total)
+    dl_str = f"↓{format_speed_fixed(dl_speed)}"
+    ul_str = f"↑{format_speed_fixed(ul_speed)}"
+    dl_hot = dl_speed >= 1024 * 1024
+    ul_hot = ul_speed >= 1024 * 1024
+
+    # Clash 连接信息
     try:
         data = fetch_connections()
         if not data:
+            print(json.dumps({"dl": dl_str, "ul": ul_str, "dl_hot": dl_hot, "ul_hot": ul_hot, "host": _T["no_conn"], "direct": True}))
             return
-        dl_total = data.get("downloadTotal", 0)
-        ul_total = data.get("uploadTotal", 0)
-        dl_speed, ul_speed = calc_speed(dl_total, ul_total)
-        dl_str = f"↓{format_speed_fixed(dl_speed)}"
-        ul_str = f"↑{format_speed_fixed(ul_speed)}"
-        dl_hot = dl_speed >= 1024 * 1024
-        ul_hot = ul_speed >= 1024 * 1024
         connections = data.get("connections") or []
         if not connections:
             print(json.dumps({"dl": dl_str, "ul": ul_str, "dl_hot": dl_hot, "ul_hot": ul_hot, "host": _T["no_conn"], "direct": True}))
@@ -169,9 +189,9 @@ def main():
         is_direct = (chain == "DIRECT")
         print(json.dumps({"dl": dl_str, "ul": ul_str, "dl_hot": dl_hot, "ul_hot": ul_hot, "host": host, "direct": is_direct}))
     except FileNotFoundError:
-        print(json.dumps({"dl": "↓   0KB", "ul": "↑   0KB", "dl_hot": False, "ul_hot": False, "host": _T["not_running"], "direct": True}))
+        print(json.dumps({"dl": dl_str, "ul": ul_str, "dl_hot": dl_hot, "ul_hot": ul_hot, "host": _T["not_running"], "direct": True}))
     except ConnectionRefusedError:
-        print(json.dumps({"dl": "↓   0KB", "ul": "↑   0KB", "dl_hot": False, "ul_hot": False, "host": _T["conn_failed"], "direct": True}))
+        print(json.dumps({"dl": dl_str, "ul": ul_str, "dl_hot": dl_hot, "ul_hot": ul_hot, "host": _T["conn_failed"], "direct": True}))
     except Exception as e:
         print(f"{_T['error']}: {e}", file=sys.stderr)
         sys.exit(1)
