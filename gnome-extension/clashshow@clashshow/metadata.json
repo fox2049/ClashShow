@@ -1,0 +1,7 @@
+{
+  "name": "ClashShow",
+  "description": "在顶栏左侧显示 Clash Verge 最新连接流量信息",
+  "uuid": "clashshow@clashshow",
+  "shell-version": ["48", "49", "50"],
+  "version": 1
+}
